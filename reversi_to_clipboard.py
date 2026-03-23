@@ -53,6 +53,43 @@ def _start_windows_hotkey_listener(emitter: HotkeyEmitter, holder: dict):
     finally:
         user32.UnregisterHotKey(None, HOTKEY_ID)
 
+
+def is_libreoffice_calc_focused() -> bool:
+    """前面ウィンドウのタイトルに LibreOffice Calc が含まれるか簡易判定する。"""
+    user32 = ctypes.windll.user32
+    hwnd = user32.GetForegroundWindow()
+    if not hwnd:
+        return False
+    buf = ctypes.create_unicode_buffer(512)
+    length = user32.GetWindowTextW(hwnd, buf, 512)
+    title = buf.value[:length]
+    if not title:
+        return False
+    t = title.lower()
+    return ("libreoffice" in t and "calc" in t) or ("calc" in t and "libreoffice" in t) or ("libreoffice calc" in t)
+
+
+def send_ctrl_v():
+    """Send Ctrl+V to the active window using keybd_event (simple, reliable).
+
+    Note: keybd_event is deprecated but acceptable for this small helper.
+    """
+    user32 = ctypes.windll.user32
+    VK_CONTROL = 0x11
+    VK_V = 0x56
+    KEYEVENTF_KEYUP = 0x0002
+
+    # press ctrl
+    user32.keybd_event(VK_CONTROL, 0, 0, 0)
+    # press v
+    user32.keybd_event(VK_V, 0, 0, 0)
+    # small delay to ensure target app receives sequence
+    time.sleep(0.05)
+    # release v
+    user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+    # release ctrl
+    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+
 if TYPE_CHECKING:
     # Type-checker-only fallbacks for attributes that some PySide6 stubs may miss
     class _QtStub:  # pragma: no cover
@@ -464,6 +501,14 @@ def show_dialog(default_source="capture", default_format="text", default_turn="a
 
     print(output_str)           # consoleに出力
     pyperclip.copy(output_str)  # clipboardにコピー
+
+    # LibreOffice Calc にフォーカスがある場合は Ctrl+V で貼り付け
+    try:
+        if is_libreoffice_calc_focused():
+            send_ctrl_v()
+    except Exception as e:
+        print(f"Auto-paste failed: {e}")
+
     return dialog, last_rect
 
 last_source = "capture"
