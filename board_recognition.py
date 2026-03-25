@@ -1133,7 +1133,7 @@ class ScreenshotRecognizer(RealBoardRecognizer):
         discIndex[1] = min(7, max(0, int(discCoord[1] / 0.125)))
 
         # 色の判定
-        if areaWide >= 10:
+        if areaWide >= 160:
             # 黒
             self._setDisc(result, DiscColor.BLACK, discCoord, discIndex)
         else:

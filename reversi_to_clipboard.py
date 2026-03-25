@@ -231,11 +231,17 @@ class SelectionDialog(QDialog):
         ok_btn = QPushButton("OK (F4)")
         ok_btn.setFixedHeight(ok_btn.sizeHint().height() * 3)
         ok_btn.clicked.connect(self.accept_settings)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)  # type: ignore[attr-defined]
+        swap_btn = QPushButton("X <--> O")
+        swap_btn.setFixedHeight(ok_btn.sizeHint().height() * 3)
+        swap_btn.clicked.connect(self.swap_clipboard)
         btn_layout.addWidget(ok_btn)
-        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(swap_btn)
         layout.addLayout(btn_layout)
+        
+        # Status Label
+        self.status_label = QLabel("")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
         
         self.setLayout(layout)  # type: ignore[attr-defined]
 
@@ -261,6 +267,20 @@ class SelectionDialog(QDialog):
         else:
             self.turn = "auto"
         self.accept()  # type: ignore[attr-defined]
+
+    def swap_clipboard(self):
+        text = pyperclip.paste()
+        if not text:
+            self.status_label.setText("Clipboard is empty.")
+            return
+        
+        # Swap X <-> O (case-insensitive swap if both appear in lower case too)
+        trans = str.maketrans("XO", "OX")
+        # Pre-process message to only show a snippet if it's long
+        new_text = text.translate(trans)
+        
+        pyperclip.copy(new_text)
+        self.status_label.setText(f"Clipboard swapped: {new_text}")
 
 class CaptureOverlay(QWidget):
     def __init__(self):
