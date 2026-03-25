@@ -626,7 +626,11 @@ last_format = "text"
 last_turn = "auto"
 last_rect = None
 while True:
-    dialog, last_rect = show_dialog(last_source, last_format, last_turn, last_rect)
+    try:
+        dialog, last_rect = show_dialog(last_source, last_format, last_turn, last_rect)
+    except Exception as e:
+        print(f"Error: {e}")
+        continue
     # 設定を保存
     last_source = dialog.source
     last_format = dialog.format

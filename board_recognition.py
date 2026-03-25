@@ -1081,7 +1081,7 @@ class ScreenshotRecognizer(RealBoardRecognizer):
         binBoardWide = cv2.adaptiveThreshold(grayBoard, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 127, -20)
         # スクリーンショットは石が反射しないので、近傍の二値化は不要(意匠性の高い石の画像だとかえって精度が悪化する)
 
-        return { "wide": binBoardWide }
+        return { "wide": binBoardWide, "gray": grayBoard }
 
     def _processColoredAndExtractDiscForDetectDisc(self, notGreen, colored, outer, hint, info, result):
         """
@@ -1124,6 +1124,11 @@ class ScreenshotRecognizer(RealBoardRecognizer):
         circleWide = subBinWide[RealBoardRecognizer._CIRCLE_FILTER == 1]
         areaWide = circleWide[circleWide == 0].shape[0]
 
+        # 同様に平均輝度を求める(より頑健な判定のため)
+        subGray = info["gray"][startY:endY, startX:endX]
+        circleGray = subGray[RealBoardRecognizer._CIRCLE_FILTER == 1]
+        avgIntensity = np.mean(circleGray)
+
         # 中心の座標
         discCoord = maxCoord + np.array([y, x]) - np.array([RealBoardRecognizer._BOARD_MARGIN, RealBoardRecognizer._BOARD_MARGIN])
         discCoord = discCoord / (RealBoardRecognizer._CELL_SIZE * 8)
@@ -1133,7 +1138,8 @@ class ScreenshotRecognizer(RealBoardRecognizer):
         discIndex[1] = min(7, max(0, int(discCoord[1] / 0.125)))
 
         # 色の判定
-        if areaWide >= 160:
+        # 画面の特性上、輝度の平均値で判定するのが最も確実
+        if avgIntensity < 128:
             # 黒
             self._setDisc(result, DiscColor.BLACK, discCoord, discIndex)
         else:
