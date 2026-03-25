@@ -88,6 +88,35 @@ def find_egaroucid_window() -> Optional[int]:
     return found_hwnd[0] if found_hwnd else None
 
 
+def find_libreoffice_calc_window() -> Optional[int]:
+    """LibreOffice Calc のウィンドウハンドルを探す。"""
+    user32 = ctypes.windll.user32
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+    found_hwnd = []
+
+    def callback(hwnd, lparam):
+        if user32.IsWindowVisible(hwnd):
+            buf = ctypes.create_unicode_buffer(512)
+            user32.GetWindowTextW(hwnd, buf, 512)
+            title = buf.value
+            if title:
+                t = title.lower()
+                if (("libreoffice" in t and "calc" in t) or ("calc" in t and "libreoffice" in t) or ("libreoffice calc" in t)):
+                    found_hwnd.append(hwnd)
+                    return False
+        return True
+
+    user32.EnumWindows(WNDENUMPROC(callback), 0)
+    return found_hwnd[0] if found_hwnd else None
+
+
+def activate_libreoffice_calc():
+    """LibreOffice Calc を最前面に移動する。"""
+    hwnd = find_libreoffice_calc_window()
+    if hwnd:
+        activate_window(hwnd)
+
+
 def activate_window(hwnd: int):
     """指定したハンドルのウィンドウを最前面に持ってくる。"""
     user32 = ctypes.windll.user32
@@ -353,6 +382,12 @@ def show_dialog(default_source="capture", default_format="text", default_turn="a
     listener_thread = threading.Thread(target=_start_windows_hotkey_listener, args=(emitter, holder), daemon=True)
     listener_thread.start()
 
+    # Calc をアクティブにする
+    try:
+        activate_libreoffice_calc()
+    except Exception as e:
+        print(f"Auto-focus failed: {e}")
+
     if dialog.exec() != QDialog.Accepted:  # type: ignore[attr-defined]
         # ダイアログ終了時はホットキースレッドを停止させる
         if "thread_id" in holder:
@@ -582,6 +617,7 @@ def show_dialog(default_source="capture", default_format="text", default_turn="a
             send_ctrl_v()
     except Exception as e:
         print(f"Egaroucid auto-paste failed: {e}")
+
 
     return dialog, last_rect
 
